@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1116" />
+  <title>Japan 2027 ✈️ Trip Tracker</title>
+  <meta name="description" content="Collaborative trip tracker & itinerary for Japan, February 2027." />
+
+  <!-- External libs (graceful-degrade if offline): Leaflet for the map, Supabase for optional cloud sync -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗻</text></svg>" />
+</head>
+<body>
+  <!-- App shell -->
+  <div id="app">
+    <!-- Sidebar / nav -->
+    <aside id="sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <span class="brand-mark">🗻</span>
+        <div class="brand-text">
+          <strong>Japan 2027</strong>
+          <small id="brand-countdown">…</small>
+        </div>
+      </div>
+      <nav id="nav"><!-- nav buttons injected by app.js --></nav>
+      <div class="sidebar-foot">
+        <div id="sync-pill" class="sync-pill" title="Sync status">●&nbsp;Local</div>
+        <button class="icon-btn" id="theme-toggle" title="Toggle light / dark">🌙</button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header id="topbar">
+      <button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button>
+      <span class="topbar-title">🗻 Japan 2027</span>
+      <span id="topbar-countdown" class="topbar-countdown"></span>
+    </header>
+
+    <!-- Main view -->
+    <main id="view" tabindex="-1"><!-- view rendered here --></main>
+
+    <!-- Mobile bottom nav -->
+    <nav id="bottomnav"><!-- injected --></nav>
+  </div>
+
+  <!-- Floating quick-capture button -->
+  <button id="quick-capture" title="Quick-capture an idea (paste a link or jot a thought)">＋</button>
+
+  <!-- Modal host -->
+  <div id="modal-root" aria-live="polite"></div>
+  <!-- Toast host -->
+  <div id="toast-root" aria-live="polite"></div>
+
+  <!-- App scripts (plain scripts + JT global namespace so it works from file:// and GitHub Pages alike) -->
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

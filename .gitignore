@@ -1,0 +1,14 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local backups exported from the app
+*.local.json
+backup*.json
+
+# Never commit secrets (the sync passphrase lives only in the browser + your DMs)
+secrets.txt
+.env
