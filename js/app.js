@@ -35,11 +35,44 @@ JT.app = (function () {
     JT.store.subscribe(render);
     render();
 
-    // optional cloud sync
-    if (S().settings.sync && S().settings.sync.enabled) {
+    // cloud sync: apply baked-in config (js/config.js), then connect or prompt for the passphrase
+    maybeApplyConfig();
+    const sy = S().settings.sync || {};
+    if (sy.enabled && sy.url && sy.passphrase) {
       if (JT.sync.available()) JT.sync.init();
       else window.addEventListener('load', () => JT.sync.init());
+    } else if (sy.url && sy.key && sy.room && !sy.passphrase) {
+      updateSyncPill('off');
+      setTimeout(promptPassphrase, 500);
     } else { updateSyncPill('off'); }
+  }
+
+  // Merge committed sync config (project URL/key/room) in if the user hasn't set their own.
+  function maybeApplyConfig() {
+    const cfg = window.JT_CONFIG && window.JT_CONFIG.sync;
+    if (!cfg || !cfg.url) return;
+    const sy = S().settings.sync || {};
+    if (!sy.url) JT.store.setSetting({ sync: Object.assign({}, sy, { url: cfg.url, key: cfg.key, room: cfg.room }) });
+  }
+
+  // First-run prompt: user just enters the shared passphrase to go live.
+  function promptPassphrase() {
+    const inp = el('input', { type: 'text', placeholder: 'Shared passphrase', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false' });
+    const connect = () => {
+      const p = inp.value.trim(); if (!p) { inp.focus(); return; }
+      JT.store.setSetting({ sync: Object.assign({}, S().settings.sync, { passphrase: p, enabled: true }) });
+      closeModal(); JT.sync.init(); toast('Connecting to your shared trip…');
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+    openModal({
+      title: '🔐 Connect to your shared trip',
+      body: el('div', {}, [
+        el('p.muted', { text: 'Enter the passphrase you and your friend share to sync this trip live. You can also do this later in Settings → Cloud sync.' }),
+        inp
+      ]),
+      footer: [el('button.btn.ghost', { onclick: closeModal }, 'Later'), el('button.btn.primary', { onclick: connect }, 'Connect')]
+    });
+    setTimeout(() => inp.focus(), 60);
   }
 
   function buildNav() {
