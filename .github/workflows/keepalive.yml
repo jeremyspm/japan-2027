@@ -1,0 +1,73 @@
+name: Supabase keep-alive
+
+# Keeps the free-tier Supabase project (japan-2027 trip sync) from
+# auto-pausing after ~7 days of inactivity. One workflow, two jobs in one:
+#   1. EVERY run pings the database REST endpoint -> a real query counts as
+#      activity and resets Supabase's inactivity clock.
+#   2. OCCASIONALLY commits a timestamp back to the repo -> keeps THIS repo
+#      "active" so GitHub doesn't auto-disable the schedule (GitHub disables
+#      cron workflows after 60 days with no repository commits).
+#
+# The anon key below is PUBLIC by design (it already ships in js/config.js).
+# Your trip data is AES-GCM encrypted in the browser before it is stored, so
+# this read only ever sees ciphertext / the room name.
+
+on:
+  schedule:
+    - cron: '17 6 */2 * *'   # every 2 days at 06:17 UTC — well under the 7-day pause threshold
+  workflow_dispatch: {}        # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write              # needed to push the periodic timestamp commit
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://wearpoyeizlevgtkvoqf.supabase.co
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlYXJwb3llaXpsZXZndGt2b3FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTY1NzYsImV4cCI6MjA5NzQzMjU3Nn0.uMn_TamAZWsgTzhLE-6xfe97tm_iwEDKqgPFgxpA0Vo
+      STAMP_FILE: .github/last-keepalive.txt
+      MAX_STAMP_AGE_DAYS: '21'   # refresh the stamp if older than this (stays well under GitHub's 60-day limit)
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Ping Supabase (resets the inactivity clock)
+        run: |
+          echo "Querying trip_state to register activity..."
+          curl -fsS \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/trip_state?select=room&limit=1" > /dev/null
+          echo "Supabase ping OK (HTTP 2xx)."
+
+      - name: Refresh repo timestamp if stale (keeps the cron enabled)
+        run: |
+          now=$(date -u +%s)
+          stamp_human=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          need_commit=1
+          if [ -f "$STAMP_FILE" ]; then
+            prev=$(date -u -d "$(cat "$STAMP_FILE")" +%s 2>/dev/null || echo 0)
+            if [ "$prev" -ne 0 ]; then
+              age_days=$(( (now - prev) / 86400 ))
+              if [ "$age_days" -lt "$MAX_STAMP_AGE_DAYS" ]; then
+                need_commit=0
+                echo "Stamp is ${age_days}d old (< ${MAX_STAMP_AGE_DAYS}d) — no commit needed."
+              fi
+            fi
+          fi
+          if [ "$need_commit" -eq 1 ]; then
+            mkdir -p "$(dirname "$STAMP_FILE")"
+            echo "$stamp_human" > "$STAMP_FILE"
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$STAMP_FILE"
+            git commit -m "chore: keep-alive stamp ${stamp_human} [skip ci]"
+            git push
+            echo "Committed fresh keep-alive stamp."
+          fi
